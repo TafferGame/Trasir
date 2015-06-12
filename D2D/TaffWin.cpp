@@ -1,10 +1,18 @@
 #include "TaffWin.h"
 
+HWND hWnd;
+HINSTANCE hInst;
+Direct2DRes D2D_Res;
+
 int WINAPI WinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine,
 	int nCmdShow)
 {
+	HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
+
+	HRESULT hr = D2D_Res.InitializeD2D();
+
 	WNDCLASSEX wcex;
 	static TCHAR szWindowClass[] = _T("taff32app");
 	static TCHAR szTitle[] = _T("Taffer Win32 Application");
@@ -32,7 +40,12 @@ int WINAPI WinMain(HINSTANCE hInstance,
 		return 1;
 	}
 
+	FLOAT dpiX, dpiY;
+
+	D2D_Res.GetScreenDPI(&dpiX, &dpiY);
+
 	hInst = hInstance;
+
 
 	// The parameters to CreateWindow explained:
 	// szWindowClass: the name of the application
@@ -45,12 +58,13 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	// hInstance: the first parameter from WinMain
 	// NULL: not used in this application
 
-	HWND hWnd = CreateWindow(
+	    hWnd = CreateWindow(
 		szWindowClass,
 		szTitle,
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		500, 100,
+		static_cast<UINT>(ceil(640.f * dpiX / 96.f)),
+		static_cast<UINT>(ceil(480.f * dpiY / 96.f)),
 		NULL,
 		NULL,
 		hInstance,
@@ -63,7 +77,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 			_T("Call to Create Window failed!"),
 			_T("Taffer Win32 Application"),
 			NULL);
-
+		
 		return 1;
 	}
 
@@ -79,27 +93,24 @@ int WINAPI WinMain(HINSTANCE hInstance,
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
+
 	
 	return (int)msg.wParam;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	PAINTSTRUCT ps;
-	HDC hdc;
 	TCHAR greeting[] = _T("Welcome to Taffer-32 Application.");
+	HRESULT hr;
 
 	switch (message)
 	{
 	case WM_PAINT:
-		hdc = BeginPaint(hWnd, &ps);
 
-		TextOut(hdc,
-			5, 5,
-			greeting, _tcslen(greeting));
+		hr = D2D_Res.BeginDrawRect();
+		if (!SUCCEEDED(hr)){ PostQuitMessage(1); }
+		ValidateRect(hWnd, NULL);
 		//End application specific layout section
-
-		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -111,3 +122,4 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
+
